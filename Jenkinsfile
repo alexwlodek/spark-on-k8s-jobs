@@ -1,5 +1,5 @@
 pipeline {
-    agent { label 'jenkins' } // albo inny node label
+    agent any // albo inny node label
 
     environment {
         AWS_REGION       = 'eu-central-1'
