@@ -43,10 +43,10 @@ pipeline {
             steps {
                 sh """
                   spark-submit \\
-                    --master k8s://https://<TWÓJ_EKS_API> \\
+                    --master k8s://https://5D2E1F4C1E46CF6DFCFAEEA76738D326.gr7.eu-central-1.eks.amazonaws.com \\
                     --deploy-mode cluster \\
                     --conf spark.kubernetes.container.image=${IMAGE_FULL} \\
-                    --conf spark.kubernetes.namespace=default \\
+                    --conf spark.kubernetes.namespace=spark \\
                     local:///opt/app/src/main.py
                 """
             }
