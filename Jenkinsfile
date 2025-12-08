@@ -1,5 +1,5 @@
 pipeline {
-    agent any // albo inny node label
+    agent { label 'spark-builder' }
 
     environment {
         AWS_REGION       = 'eu-central-1'
