@@ -52,9 +52,11 @@ pipeline {
                 // Runs in the default 'jnlp' container which has kubectl/spark-submit tools
                 sh """
                   spark-submit \
-                    --master k8s://https://C9CF0A3CA8201DB2F8052724BBFA208C.yl4.eu-central-1.eks.amazonaws.com \
+                    --master k8s://https://203696D99B47668719F3207FE06A18F6.gr7.eu-central-1.eks.amazonaws.com \
                     --deploy-mode cluster \
                     --conf spark.kubernetes.container.image=${IMAGE_FULL} \
+                    --conf spark.kubernetes.container.image.pullPolicy=Always \
+                    --conf spark.executor.instances=1 \
                     --conf spark.kubernetes.namespace=ci \
                     local:///opt/app/src/main.py
                 """
