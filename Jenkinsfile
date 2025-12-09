@@ -30,8 +30,8 @@ pipeline {
                         // No need for 'docker login' or 'aws ecr get-login'
                         sh """
                         /kaniko/executor \
-                            --context $(pwd)/jobs/${JOB_NAME} \
-                            --dockerfile $(pwd)/jobs/${JOB_NAME}/Dockerfile \
+                            --context \$(pwd)/jobs/${JOB_NAME} \
+                            --dockerfile \$(pwd)/jobs/${JOB_NAME}/Dockerfile \
                             --destination ${IMAGE_FULL} \
                             --cache=true
                         """
