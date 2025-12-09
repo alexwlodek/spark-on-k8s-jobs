@@ -28,10 +28,17 @@ pipeline {
                     script {
                         // Kaniko handles ECR auth automatically via IRSA (IAM Role)
                         // No need for 'docker login' or 'aws ecr get-login'
+                        
+                        // FIX: We use 'Dockerfile' as a relative path. Kaniko resolves this 
+                        // relative to the --context. Using absolute paths for --dockerfile 
+                        // can sometimes fail validation checks inside the container.
                         sh """
+                        echo "--- Debug: Verifying Context ---"
+                        ls -la jobs/${JOB_NAME}
+
                         /kaniko/executor \
                             --context \$(pwd)/jobs/${JOB_NAME} \
-                            --dockerfile \$(pwd)/jobs/${JOB_NAME}/Dockerfile \
+                            --dockerfile Dockerfile \
                             --destination ${IMAGE_FULL} \
                             --cache=true
                         """
