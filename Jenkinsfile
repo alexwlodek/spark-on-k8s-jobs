@@ -16,26 +16,17 @@ pipeline {
             steps { checkout scm }
         }
 
-        stage('Docker build') {
+        stage('Build and Push with Kaniko') {
             steps {
-                dir("jobs/${JOB_NAME}") {
-                    sh "docker build -t ${IMAGE_FULL} ."
-                }
-            }
-        }
-
-        stage('Login to ECR') {
-            steps {
+                sh "aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_URL}"
                 sh """
-                  aws ecr get-login-password --region ${AWS_REGION} \
-                    | docker login --username AWS --password-stdin ${ECR_URL}
+                docker run --rm -v ~/.docker/config.json:/kaniko/.docker/config.json:ro \\
+                           -v \$(pwd):/workspace \\
+                           gcr.io/kaniko-project/executor:v1.9.0 \\
+                           --dockerfile=/workspace/jobs/${JOB_NAME}/Dockerfile \\
+                           --context=/workspace/jobs/${JOB_NAME} \\
+                           --destination=${IMAGE_FULL}
                 """
-            }
-        }
-
-        stage('Push image') {
-            steps {
-                sh "docker push ${IMAGE_FULL}"
             }
         }
 
