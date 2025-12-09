@@ -9,7 +9,7 @@ pipeline {
         AWS_ACCOUNT_ID   = '474252044333'
         ECR_REPOSITORY   = 'spark-on-k8s-jobs-dev'
         ECR_URL          = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
-        JOB_NAME         = "sample-job"
+        JOB_NAME         = "sample_job"
         IMAGE_TAG        = "${JOB_NAME}-${env.BUILD_NUMBER}"
         IMAGE_FULL       = "${ECR_URL}/${ECR_REPOSITORY}:${IMAGE_TAG}"
     }
