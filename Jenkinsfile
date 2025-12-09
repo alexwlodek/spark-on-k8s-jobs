@@ -21,43 +21,31 @@ pipeline {
             }
         }
 
-stage('ECR login (IRSA)') {
-  steps {
-    container('awscli') {
-      sh """
-        mkdir -p /kaniko/.docker
-        PASS=$(aws ecr get-login-password --region ${AWS_REGION})
-        AUTH=$(printf "AWS:%s" "$PASS" | base64)
-        cat > /kaniko/.docker/config.json <<EOF
-        {
-          "auths": {
-            "${ECR_URL}": {
-              "username": "AWS",
-              "password": "$PASS",
-              "auth": "$AUTH"
-            }
-          }
-        }
-        EOF
-      """
-    }
-  }
-}
+        stage('Build and Push with Kaniko') {
+            steps {
+                // CRITICAL: Switch to the kaniko container defined in the pod template
+                container(name: 'kaniko', shell: '/busybox/sh') {
+                    script {
+                        // Kaniko handles ECR auth automatically via IRSA (IAM Role)
+                        // No need for 'docker login' or 'aws ecr get-login'
+                        
+                        // FIX: We use 'Dockerfile' as a relative path. Kaniko resolves this 
+                        // relative to the --context. Using absolute paths for --dockerfile 
+                        // can sometimes fail validation checks inside the container.
+                        sh """
+                        echo "--- Debug: Verifying Context ---"
+                        ls -la jobs/${JOB_NAME}
 
-stage('Build and Push with Kaniko') {
-  steps {
-    container('kaniko') {
-      sh """
-        /kaniko/executor \
-          --context \$(pwd)/jobs/${JOB_NAME} \
-          --dockerfile Dockerfile \
-          --destination ${IMAGE_FULL} \
-          --cache=true \
-          --docker-config=/kaniko/.docker
-      """
-    }
-  }
-}
+                        /kaniko/executor \
+                            --context \$(pwd)/jobs/${JOB_NAME} \
+                            --dockerfile Dockerfile \
+                            --destination ${IMAGE_FULL} \
+                            --cache=true
+                        """
+                    }
+                }
+            }
+        }
 
         stage('Run Spark job') {
             steps {
