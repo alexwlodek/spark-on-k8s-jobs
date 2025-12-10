@@ -83,14 +83,14 @@ spec:
 
                         // Apply + podgląd statusu
                         sh """
-                            echo "Applying SparkApplication ${sparkAppName} in namespace ci"
+                            echo "Applying SparkApplication ${sparkAppName} in namespace spark"
                             kubectl apply -f spark-application.yaml
 
-                            echo "Current SparkApplications in ci:"
-                            kubectl get sparkapplications -n ci
+                            echo "Current SparkApplications in spark:"
+                            kubectl get sparkapplications -n spark
 
                             echo "Describe new SparkApplication:"
-                            kubectl describe sparkapplication ${sparkAppName} -n ci
+                            kubectl describe sparkapplication ${sparkAppName} -n spark
                         """
 
                         // Prosty wait na zakończenie joba (bez {1..60}, żeby na pewno działało w /bin/sh)
@@ -98,7 +98,7 @@ spec:
                             echo "Waiting for SparkApplication ${sparkAppName} to finish..."
                             i=0
                             while [ \$i -lt 60 ]; do
-                              status=\$(kubectl get sparkapplication ${sparkAppName} -n ci -o jsonpath='{.status.applicationState.state}' 2>/dev/null || echo "UNKNOWN")
+                              status=\$(kubectl get sparkapplication ${sparkAppName} -n spark -o jsonpath='{.status.applicationState.state}' 2>/dev/null || echo "UNKNOWN")
                               echo "Current state: \$status"
                               if [ "\$status" = "COMPLETED" ] || [ "\$status" = "FAILED" ]; then
                                 break
@@ -108,7 +108,7 @@ spec:
                             done
 
                             echo "Final SparkApplication status:"
-                            kubectl get sparkapplication ${sparkAppName} -n ci -o yaml
+                            kubectl get sparkapplication ${sparkAppName} -n spark -o yaml
                         """
                     }
                 }
