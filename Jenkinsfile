@@ -67,7 +67,7 @@ spec:
     type: Never
   driver:
     cores: 1
-    memory: "1g"
+    memory: "256m"
     serviceAccount: default
     labels:
       app: ${JOB_NAME}
@@ -75,7 +75,7 @@ spec:
   executor:
     cores: 1
     instances: 1
-    memory: "1g"
+    memory: "256m"
     labels:
       app: ${JOB_NAME}
       build-number: "${env.BUILD_NUMBER}"
