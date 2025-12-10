@@ -1,7 +1,7 @@
 pipeline {
     agent {
-        // Points to the pod template defined in values.yaml
-        label 'spark-builder' 
+        // Użyj pod template z label "spark-builder"
+        label 'spark-builder'
     }
 
     environment {
@@ -9,9 +9,11 @@ pipeline {
         AWS_ACCOUNT_ID   = '474252044333'
         ECR_REPOSITORY   = 'spark-on-k8s-jobs-dev'
         ECR_URL          = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
-        JOB_NAME         = "sample_job"
-        IMAGE_TAG        = "${JOB_NAME}-${env.BUILD_NUMBER}"
-        IMAGE_FULL       = "${ECR_URL}/${ECR_REPOSITORY}:${IMAGE_TAG}"
+
+        // Uwaga: to jest nazwa joba w Twoim repo, nie Jenkins JOB_NAME
+        JOB_NAME   = 'sample_job'
+        IMAGE_TAG  = "${JOB_NAME}-${env.BUILD_NUMBER}"
+        IMAGE_FULL = "${ECR_URL}/${ECR_REPOSITORY}:${IMAGE_TAG}"
     }
 
     stages {
@@ -23,43 +25,93 @@ pipeline {
 
         stage('Build and Push with Kaniko') {
             steps {
-                // CRITICAL: Switch to the kaniko container defined in the pod template
                 container(name: 'kaniko', shell: '/busybox/sh') {
                     script {
-                        // Kaniko handles ECR auth automatically via IRSA (IAM Role)
-                        // No need for 'docker login' or 'aws ecr get-login'
-                        
-                        // FIX: We use 'Dockerfile' as a relative path. Kaniko resolves this 
-                        // relative to the --context. Using absolute paths for --dockerfile 
-                        // can sometimes fail validation checks inside the container.
                         sh """
-                        echo "--- Debug: Verifying Context ---"
-                        ls -la jobs/${JOB_NAME}
+                            echo '--- Debug: Verifying Context ---'
+                            ls -la jobs/${JOB_NAME}
 
-                        /kaniko/executor \
-                            --context \$(pwd)/jobs/${JOB_NAME} \
-                            --dockerfile Dockerfile \
-                            --destination ${IMAGE_FULL} \
-                            --cache=true
+                            /kaniko/executor \\
+                              --context \$(pwd)/jobs/${JOB_NAME} \\
+                              --dockerfile Dockerfile \\
+                              --destination ${IMAGE_FULL} \\
+                              --cache=true
                         """
                     }
                 }
             }
         }
 
-        stage('Run Spark job') {
+        stage('Submit SparkApplication') {
             steps {
-                // Runs in the default 'jnlp' container which has kubectl/spark-submit tools
-                sh """
-                  spark-submit \
-                    --master k8s://https://203696D99B47668719F3207FE06A18F6.gr7.eu-central-1.eks.amazonaws.com \
-                    --deploy-mode cluster \
-                    --conf spark.kubernetes.container.image=${IMAGE_FULL} \
-                    --conf spark.kubernetes.container.image.pullPolicy=Always \
-                    --conf spark.executor.instances=1 \
-                    --conf spark.kubernetes.namespace=ci \
-                    local:///opt/app/src/main.py
-                """
+                // Kontener z kubectl zdefiniowany w values.yaml (name: "kubectl")
+                container('kubectl') {
+                    script {
+                        def sparkAppName = "${JOB_NAME}-${env.BUILD_NUMBER}"
+
+                        // Generujemy manifest SparkApplication
+                        writeFile file: 'spark-application.yaml', text: """\
+apiVersion: sparkoperator.k8s.io/v1beta2
+kind: SparkApplication
+metadata:
+  name: ${sparkAppName}
+  namespace: ci
+spec:
+  type: Python
+  mode: cluster
+  image: ${IMAGE_FULL}
+  imagePullPolicy: Always
+  mainApplicationFile: local:///opt/app/src/main.py
+  sparkVersion: 3.5.0
+  restartPolicy:
+    type: Never
+  driver:
+    cores: 1
+    memory: "1g"
+    serviceAccount: jenkins
+    labels:
+      app: ${JOB_NAME}
+      build-number: "${env.BUILD_NUMBER}"
+  executor:
+    cores: 1
+    instances: 1
+    memory: "1g"
+    labels:
+      app: ${JOB_NAME}
+      build-number: "${env.BUILD_NUMBER}"
+"""
+
+                        // Apply + podgląd statusu
+                        sh """
+                            echo "Applying SparkApplication ${sparkAppName} in namespace ci"
+                            kubectl apply -f spark-application.yaml
+
+                            echo "Current SparkApplications in ci:"
+                            kubectl get sparkapplications -n ci
+
+                            echo "Describe new SparkApplication:"
+                            kubectl describe sparkapplication ${sparkAppName} -n ci
+                        """
+
+                        // Prosty wait na zakończenie joba (bez {1..60}, żeby na pewno działało w /bin/sh)
+                        sh """
+                            echo "Waiting for SparkApplication ${sparkAppName} to finish..."
+                            i=0
+                            while [ \$i -lt 60 ]; do
+                              status=\$(kubectl get sparkapplication ${sparkAppName} -n ci -o jsonpath='{.status.applicationState.state}' 2>/dev/null || echo "UNKNOWN")
+                              echo "Current state: \$status"
+                              if [ "\$status" = "COMPLETED" ] || [ "\$status" = "FAILED" ]; then
+                                break
+                              fi
+                              i=\$((i+1))
+                              sleep 10
+                            done
+
+                            echo "Final SparkApplication status:"
+                            kubectl get sparkapplication ${sparkAppName} -n ci -o yaml
+                        """
+                    }
+                }
             }
         }
     }
