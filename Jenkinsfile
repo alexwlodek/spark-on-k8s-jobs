@@ -68,7 +68,7 @@ spec:
   driver:
     cores: 1
     memory: "1g"
-    serviceAccount: default
+    serviceAccount: jenkins
     labels:
       app: ${JOB_NAME}
       build-number: "${env.BUILD_NUMBER}"
