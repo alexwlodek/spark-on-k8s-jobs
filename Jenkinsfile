@@ -11,7 +11,7 @@ pipeline {
         ECR_URL          = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
 
         // Uwaga: to jest nazwa joba w Twoim repo, nie Jenkins JOB_NAME
-        JOB_NAME   = 'sample_job'
+        JOB_NAME   = 'sample-job'
         IMAGE_TAG  = "${JOB_NAME}-${env.BUILD_NUMBER}"
         IMAGE_FULL = "${ECR_URL}/${ECR_REPOSITORY}:${IMAGE_TAG}"
     }
