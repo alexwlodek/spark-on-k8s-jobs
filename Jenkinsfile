@@ -55,7 +55,7 @@ apiVersion: sparkoperator.k8s.io/v1beta2
 kind: SparkApplication
 metadata:
   name: ${sparkAppName}
-  namespace: ci
+  namespace: spark
 spec:
   type: Python
   mode: cluster
@@ -68,7 +68,7 @@ spec:
   driver:
     cores: 1
     memory: "1g"
-    serviceAccount: jenkins
+    serviceAccount: default
     labels:
       app: ${JOB_NAME}
       build-number: "${env.BUILD_NUMBER}"
