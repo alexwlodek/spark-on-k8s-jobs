@@ -67,7 +67,7 @@ spec:
     type: Never
   driver:
     cores: 1
-    memory: "256m"
+    memory: "512m"
     serviceAccount: default
     labels:
       app: ${JOB_NAME}
